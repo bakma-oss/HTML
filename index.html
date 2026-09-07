@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>오목사각형 각도 실험</title>
+<style>
+:root{--bg:#fffdf3;--ink:#172033;--blue:#1468e8;--red:#e14b3b;--green:#0b7a43;--orange:#b86a00;--line:#dce4ef}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+body{min-height:100dvh;display:flex;flex-direction:column}header{padding:14px 16px 6px}h1{margin:0 0 5px;font-size:22px}.desc{margin:0;color:#4c5668;font-size:14px;line-height:1.45}
+.panel{margin:8px 12px;padding:12px 14px;background:#ffffffe8;border:1px solid var(--line);border-radius:16px}.formula{font-size:20px;font-weight:800;text-align:center}.numbers{margin-top:7px;text-align:center;font-size:15px;line-height:1.55}.ok{color:var(--green);font-weight:800}.warn{color:var(--orange);font-weight:800}.note{margin-top:6px;color:#5d6675;font-size:13px}
+button{display:block;margin:8px auto 0;border:0;border-radius:12px;padding:9px 14px;font-weight:700;background:#eef4ff;color:#154c9f}
+.stage-wrap{flex:1;min-height:430px;padding:0 10px 12px}svg{width:100%;height:100%;min-height:430px;display:block;border-radius:18px;touch-action:none;background:linear-gradient(to bottom,transparent 49px,rgba(217,190,90,.18) 50px,transparent 51px);background-size:100% 88px}
+.shape{fill:rgba(20,104,232,.045);stroke:var(--blue);stroke-width:5;stroke-linejoin:round}.shape.bad{fill:rgba(225,75,59,.05);stroke:#a65b5b}.handle{fill:#fff;stroke:var(--blue);stroke-width:4}.handle.active{fill:#dbeaff}.arc{fill:none;stroke:var(--red);stroke-width:4;stroke-linecap:round}
+.label{font-size:28px;font-weight:800;fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:7px}.value{font-size:18px;font-weight:700;fill:var(--red);paint-order:stroke;stroke:var(--bg);stroke-width:6px}
+</style>
+</head>
+<body>
+<header><h1>오목한 모양의 각도 실험</h1><p class="desc">파란 점을 손가락으로 움직여 보세요. 오목/볼록 상태에 따라 수학적으로 맞는 공식을 표시합니다.</p></header>
+<div class="panel"><div id="formula" class="formula"></div><div id="numbers" class="numbers"></div><div id="note" class="note"></div><button id="resetBtn">처음 모양으로</button></div>
+<div class="stage-wrap"><svg id="svg" viewBox="0 0 900 700">
+<polygon id="poly" class="shape"></polygon>
+<path id="arcA" class="arc"></path><path id="arcB" class="arc"></path><path id="arcC" class="arc"></path><path id="arcD" class="arc"></path>
+<text id="labelA" class="label">a</text><text id="labelB" class="label">b</text><text id="labelC" class="label">c</text><text id="labelD" class="label">ㄱ</text>
+<text id="valueA" class="value"></text><text id="valueB" class="value"></text><text id="valueC" class="value"></text><text id="valueD" class="value"></text>
+<circle id="pA" class="handle" r="15"></circle><circle id="pB" class="handle" r="15"></circle><circle id="pD" class="handle" r="15"></circle><circle id="pC" class="handle" r="15"></circle>
+</svg></div>
+<script>
+const svg=document.getElementById('svg'), poly=document.getElementById('poly');
+const defaults={A:{x:445,y:65},B:{x:95,y:610},D:{x:435,y:365},C:{x:820,y:600}},P=JSON.parse(JSON.stringify(defaults));
+const H={A:pA,B:pB,C:pC,D:pD};
+const deg=r=>r*180/Math.PI, norm=x=>{x%=360;if(x<0)x+=360;return x};
+function area(ps){let s=0;for(let i=0;i<ps.length;i++){let p=ps[i],q=ps[(i+1)%ps.length];s+=p.x*q.y-q.x*p.y}return s/2}
+function cross(a,b,c){return (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)}
+function on(a,b,p){return Math.min(a.x,b.x)<=p.x&&p.x<=Math.max(a.x,b.x)&&Math.min(a.y,b.y)<=p.y&&p.y<=Math.max(a.y,b.y)}
+function inter(a,b,c,d){let c1=cross(a,b,c),c2=cross(a,b,d),c3=cross(c,d,a),c4=cross(c,d,b),e=1e-9;if(((c1>e&&c2<-e)||(c1<-e&&c2>e))&&((c3>e&&c4<-e)||(c3<-e&&c4>e)))return true;if(Math.abs(c1)<=e&&on(a,b,c))return true;if(Math.abs(c2)<=e&&on(a,b,d))return true;if(Math.abs(c3)<=e&&on(c,d,a))return true;if(Math.abs(c4)<=e&&on(c,d,b))return true;return false}
+function crossed(){return inter(P.A,P.B,P.D,P.C)||inter(P.B,P.D,P.C,P.A)}
+function interior(prev,v,next,o){let ix=prev.x-v.x,iy=prev.y-v.y,ox=next.x-v.x,oy=next.y-v.y;let t=deg(Math.atan2(ix*oy-iy*ox,ix*ox+iy*oy));let ang=180+(o>0?t:-t);ang=norm(ang);return ang<1e-7?360:ang}
+function unit(x,y){let m=Math.hypot(x,y)||1;return{x:x/m,y:y/m}}
+function pos(prev,v,next,r){let u1=unit(prev.x-v.x,prev.y-v.y),u2=unit(next.x-v.x,next.y-v.y),bx=u1.x+u2.x,by=u1.y+u2.y,m=Math.hypot(bx,by);if(m<.05){bx=-u1.y;by=u1.x;m=1}return{x:v.x+bx/m*r,y:v.y+by/m*r}}
+function arc(prev,v,next,r){let a1=Math.atan2(prev.y-v.y,prev.x-v.x),a2=Math.atan2(next.y-v.y,next.x-v.x),d=a2-a1;while(d<=-Math.PI)d+=2*Math.PI;while(d>Math.PI)d-=2*Math.PI;let e=a1+d,sx=v.x+r*Math.cos(a1),sy=v.y+r*Math.sin(a1),ex=v.x+r*Math.cos(e),ey=v.y+r*Math.sin(e);return `M ${sx} ${sy} A ${r} ${r} 0 0 ${d>0?1:0} ${ex} ${ey}`}
+function txt(id,p,t,dy=0){let e=document.getElementById(id);e.setAttribute('x',p.x);e.setAttribute('y',p.y+dy);e.setAttribute('text-anchor','middle');e.setAttribute('dominant-baseline','middle');e.textContent=t}
+function update(){
+let pts=[P.A,P.B,P.D,P.C];poly.setAttribute('points',pts.map(p=>`${p.x},${p.y}`).join(' '));Object.keys(H).forEach(k=>{H[k].setAttribute('cx',P[k].x);H[k].setAttribute('cy',P[k].y)});
+if(crossed()){poly.classList.add('bad');formula.textContent='선이 서로 교차한 상태';numbers.innerHTML='<span class="warn">이 상태는 단순 사각형이 아니므로 공식 적용 제외</span>';note.textContent='점을 움직여 선이 교차하지 않게 하세요.';return}else poly.classList.remove('bad');
+let o=area(pts)>=0?1:-1, A=interior(P.C,P.A,P.B,o),B=interior(P.A,P.B,P.D,o),D=interior(P.B,P.D,P.C,o),C=interior(P.D,P.C,P.A,o);
+let concave=D>180+1e-6, G=concave?360-D:D, sum=A+B+C;
+arcA.setAttribute('d',arc(P.C,P.A,P.B,40));arcB.setAttribute('d',arc(P.A,P.B,P.D,40));arcC.setAttribute('d',arc(P.D,P.C,P.A,40));arcD.setAttribute('d',arc(P.B,P.D,P.C,52));
+let la=pos(P.C,P.A,P.B,68),lb=pos(P.A,P.B,P.D,68),lc=pos(P.D,P.C,P.A,68),ld=pos(P.B,P.D,P.C,78);
+txt('labelA',la,'a');txt('labelB',lb,'b');txt('labelC',lc,'c');txt('labelD',ld,'ㄱ');txt('valueA',la,A.toFixed(1)+'°',31);txt('valueB',lb,B.toFixed(1)+'°',31);txt('valueC',lc,C.toFixed(1)+'°',31);txt('valueD',ld,G.toFixed(1)+'°',31);
+if(concave){formula.textContent='a + b + c = ㄱ';numbers.innerHTML=`a=${A.toFixed(1)}° &nbsp; b=${B.toFixed(1)}° &nbsp; c=${C.toFixed(1)}°<br>a+b+c=<b>${sum.toFixed(1)}°</b> &nbsp; ㄱ=<b>${G.toFixed(1)}°</b><br><span class="ok">✓ 오목한 상태에서 항상 성립</span>`;note.textContent=`가운데 실제 내각은 ${D.toFixed(1)}°이고, 그림의 ㄱ은 바깥쪽 작은 각 ${G.toFixed(1)}°입니다. 이 ㄱ은 180°를 넘지 않습니다.`}
+else{formula.textContent='a + b + c + ㄱ = 360°';numbers.innerHTML=`a=${A.toFixed(1)}° &nbsp; b=${B.toFixed(1)}° &nbsp; c=${C.toFixed(1)}°<br>a+b+c=<b>${sum.toFixed(1)}°</b> &nbsp; ㄱ=<b>${G.toFixed(1)}°</b><br><span class="warn">가운데가 볼록해져 공식이 바뀜</span>`;note.textContent='볼록사각형에서는 네 내각의 합이 360°입니다.'}
+}
+function toSvg(e){let p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())}
+let drag=null;['A','B','C','D'].forEach(k=>{let el=H[k];el.addEventListener('pointerdown',e=>{drag=k;el.classList.add('active');try{el.setPointerCapture(e.pointerId)}catch(_){ }e.preventDefault()});el.addEventListener('pointermove',e=>{if(drag!==k)return;let p=toSvg(e);P[k].x=Math.max(25,Math.min(875,p.x));P[k].y=Math.max(25,Math.min(675,p.y));update();e.preventDefault()});let stop=e=>{if(drag===k){drag=null;el.classList.remove('active')}};el.addEventListener('pointerup',stop);el.addEventListener('pointercancel',stop)});
+resetBtn.addEventListener('click',()=>{Object.keys(defaults).forEach(k=>{P[k].x=defaults[k].x;P[k].y=defaults[k].y});update()});update();
+</script>
+</body>
+</html>
